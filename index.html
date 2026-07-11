@@ -5,7 +5,6 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>Клубная арена</title>
     <style>
-        /* Все стили без изменений (такие же, как в предыдущем коде) */
         * { box-sizing: border-box; user-select: none; margin: 0; padding: 0; }
         html, body { width: 100%; min-height: 100vh; background: #1a1a2e; display: flex; justify-content: center; align-items: center; font-family: 'Segoe UI', Tahoma, sans-serif; padding: 10px; margin: 0; overflow-x: hidden; }
         .game-container { background: #16213e; padding: 20px 15px 15px; border-radius: 24px; box-shadow: 0 0 50px rgba(0,0,0,0.8); border: 2px solid #e94560; max-width: 600px; width: 100%; text-align: center; }
@@ -65,7 +64,7 @@
                 <div class="key-dots" id="keyDots"></div>
             </div>
             <div class="durability-area">
-                🛡️ <span id="durability">100</span>
+                🛡️ <span id="durability">100</span> / 100
             </div>
         </div>
         <div class="grid-wrapper">
@@ -129,9 +128,31 @@
                 return arr;
             }
 
-            // ----- НОВАЯ ГАРАНТИРОВАННАЯ ГЕНЕРАЦИЯ -----
+            // Функция открытия всех клеток (при поражении)
+            function revealAllCells() {
+                for (let r = 0; r < GRID_SIZE; r++) {
+                    for (let c = 0; c < GRID_SIZE; c++) {
+                        grid[r][c].opened = true;
+                    }
+                }
+                renderGrid();
+            }
+
+            // Функция завершения игры поражением
+            function loseGame(reason) {
+                if (gameOver) return;
+                gameOver = true;
+                messageEl.textContent = reason || '💀 Энергия истощена. Игра окончена.';
+                messageEl.className = 'message lose';
+                revealAllCells();
+                // Отключаем модалку, если она открыта
+                modal.classList.remove('active');
+                selectedCell = null;
+                // Блокируем кнопки (они уже неактивны через gameOver)
+            }
+
+            // ----- ГАРАНТИРОВАННАЯ ГЕНЕРАЦИЯ (без изменений) -----
             function initGame() {
-                // Сброс
                 grid = Array.from({ length: GRID_SIZE }, () =>
                     Array.from({ length: GRID_SIZE }, () => ({
                         type: 'empty',
@@ -147,7 +168,6 @@
                 selectedCell = null;
                 modal.classList.remove('active');
 
-                // Создаём список всех предметов (10 штук)
                 let items = [];
                 const keyColors = ['red', 'red', 'blue', 'blue', 'yellow'];
                 for (let color of keyColors) {
@@ -158,7 +178,6 @@
                     items.push({ type: 'bomb', color: color });
                 }
 
-                // Функция проверки, можно ли поставить предмет в (row, col)
                 function canPlace(row, col, item) {
                     if (grid[row][col].type !== 'empty') return false;
                     const dirs = [
@@ -178,12 +197,10 @@
                     return true;
                 }
 
-                // Рекурсивный перебор с возвратом (гарантирует нахождение решения)
                 function solve(index) {
                     if (index === items.length) return true;
                     const item = items[index];
 
-                    // Получаем список свободных клеток
                     let freeCells = [];
                     for (let r = 0; r < GRID_SIZE; r++) {
                         for (let c = 0; c < GRID_SIZE; c++) {
@@ -193,9 +210,7 @@
                         }
                     }
 
-                    // Для жёлтого ключа – приоритет центральных клеток (4 центра)
                     if (item.color === 'yellow' && item.type === 'key') {
-                        // Центральные клетки: (1,1), (1,2), (2,1), (2,2)
                         let center = [];
                         let perimeter = [];
                         for (let cell of freeCells) {
@@ -206,10 +221,8 @@
                                 perimeter.push(cell);
                             }
                         }
-                        // Перемешиваем обе группы
                         shuffleArray(center);
                         shuffleArray(perimeter);
-                        // Сначала пробуем центр, потом периметр
                         let order = [...center, ...perimeter];
                         for (let cell of order) {
                             if (canPlace(cell.row, cell.col, item)) {
@@ -231,7 +244,6 @@
                         return false;
                     }
 
-                    // Для остальных предметов – случайный порядок свободных клеток
                     shuffleArray(freeCells);
                     for (let cell of freeCells) {
                         if (canPlace(cell.row, cell.col, item)) {
@@ -253,18 +265,15 @@
                     return false;
                 }
 
-                // Пытаемся найти решение с разными перемешиваниями
                 let attempts = 0;
                 let found = false;
                 while (attempts < 500 && !found) {
-                    // Перемешиваем предметы, но жёлтый ключ ставим не первым
                     shuffleArray(items);
                     let yellowIdx = items.findIndex(item => item.color === 'yellow' && item.type === 'key');
                     if (yellowIdx < 3) {
                         const [item] = items.splice(yellowIdx, 1);
                         items.splice(5, 0, item);
                     }
-                    // Очищаем сетку
                     for (let r = 0; r < GRID_SIZE; r++) {
                         for (let c = 0; c < GRID_SIZE; c++) {
                             grid[r][c] = { type: 'empty', color: null, opened: false, hintRevealed: false };
@@ -276,14 +285,11 @@
                     }
                     attempts++;
                 }
-
-                // Если не нашли – перезапускаем игру (аварийный случай)
                 if (!found) {
                     initGame();
                     return;
                 }
 
-                // Заполняем оставшиеся клетки как пустые
                 for (let r = 0; r < GRID_SIZE; r++) {
                     for (let c = 0; c < GRID_SIZE; c++) {
                         if (grid[r][c].type === 'empty') {
@@ -355,7 +361,7 @@
             }
 
             function updateInfo() {
-                durabilityEl.textContent = Math.max(0, durability);
+                durabilityEl.textContent = Math.max(0, durability) + ' / ' + MAX_DURABILITY;
                 keyDotsEl.innerHTML = '';
                 const allKeys = ['red', 'red', 'blue', 'blue', 'yellow'];
                 const foundColors = [];
@@ -389,9 +395,9 @@
                 const canOpen = durability >= DURABILITY_PER_OPEN;
                 const canHint = durability >= DURABILITY_PER_HINT;
                 btnOpen.disabled = !canOpen;
-                btnOpen.textContent = canOpen ? `🔓 Открыть (${DURABILITY_PER_OPEN} ⚡)` : `🔓 Недостаточно энергии`;
+                btnOpen.textContent = canOpen ? `🔓 Открыть (${DURABILITY_PER_OPEN} ⚡)` : '🔓 Недостаточно энергии';
                 btnHint.disabled = !canHint;
-                btnHint.textContent = canHint ? `💡 Подсказка (${DURABILITY_PER_HINT} ⚡)` : `💡 Недостаточно энергии`;
+                btnHint.textContent = canHint ? `💡 Подсказка (${DURABILITY_PER_HINT} ⚡)` : '💡 Недостаточно энергии';
                 modal.classList.add('active');
             }
 
@@ -406,8 +412,8 @@
 
                 if (action === 'open') {
                     if (durability < DURABILITY_PER_OPEN) {
-                        messageEl.textContent = '⚠️ Недостаточно энергии!';
-                        messageEl.className = 'message lose';
+                        // Недостаточно энергии → поражение
+                        loseGame('💀 Недостаточно энергии для открытия сейфа. Игра окончена.');
                         modal.classList.remove('active');
                         return;
                     }
@@ -442,29 +448,16 @@
                     updateInfo();
                     messageEl.textContent = msg;
                     messageEl.className = 'message';
+                    // Проверка на окончание энергии
                     if (durability <= 0) {
-                        durability = 0;
-                        updateInfo();
-                        if (totalKeysFound < KEYS_NEEDED) {
-                            gameOver = true;
-                            messageEl.textContent = '💀 Энергия истощена. Игра окончена.';
-                            messageEl.className = 'message lose';
-                            renderGrid();
-                            modal.classList.remove('active');
-                            return;
-                        }
+                        loseGame('💀 Энергия истощена. Игра окончена.');
+                        modal.classList.remove('active');
+                        return;
                     }
                     modal.classList.remove('active');
-                    if (durability <= 0 && totalKeysFound < KEYS_NEEDED) {
-                        gameOver = true;
-                        messageEl.textContent = '💀 Энергия истощена. Игра окончена.';
-                        messageEl.className = 'message lose';
-                        renderGrid();
-                    }
                 } else if (action === 'hint') {
                     if (durability < DURABILITY_PER_HINT) {
-                        messageEl.textContent = '⚠️ Недостаточно энергии для подсказки!';
-                        messageEl.className = 'message lose';
+                        loseGame('💀 Недостаточно энергии для подсказки. Игра окончена.');
                         modal.classList.remove('active');
                         return;
                     }
@@ -478,17 +471,12 @@
                     messageEl.className = 'message';
                     renderGrid();
                     updateInfo();
-                    modal.classList.remove('active');
                     if (durability <= 0) {
-                        durability = 0;
-                        updateInfo();
-                        if (totalKeysFound < KEYS_NEEDED) {
-                            gameOver = true;
-                            messageEl.textContent = '💀 Энергия истощена. Игра окончена.';
-                            messageEl.className = 'message lose';
-                            renderGrid();
-                        }
+                        loseGame('💀 Энергия истощена. Игра окончена.');
+                        modal.classList.remove('active');
+                        return;
                     }
+                    modal.classList.remove('active');
                 }
                 selectedCell = null;
             }
