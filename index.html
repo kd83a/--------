@@ -5,7 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>Клубная арена</title>
     <style>
-        /* ... все стили без изменений (как в предыдущем коде) ... */
+        /* ... все стили без изменений ... */
         * { box-sizing: border-box; user-select: none; margin: 0; padding: 0; }
         html, body { width: 100%; min-height: 100vh; background: #1a1a2e; display: flex; justify-content: center; align-items: center; font-family: 'Segoe UI', Tahoma, sans-serif; padding: 10px; margin: 0; overflow-x: hidden; }
         .game-container { background: #16213e; padding: 20px 15px 15px; border-radius: 24px; box-shadow: 0 0 50px rgba(0,0,0,0.8); border: 2px solid #e94560; max-width: 600px; width: 100%; text-align: center; }
@@ -357,7 +357,6 @@
             }
 
             function updateInfo() {
-                // Исправлено: теперь отображается только "текущая / 100"
                 durabilityEl.textContent = Math.max(0, durability) + ' / ' + MAX_DURABILITY;
                 keyDotsEl.innerHTML = '';
                 const allKeys = ['red', 'red', 'blue', 'blue', 'yellow'];
