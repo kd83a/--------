@@ -1,9 +1,514 @@
 <!DOCTYPE html>
-<html>
-  <head>
-    <title>Мой первый проект</title>
-  </head>
-  <body>
-    <h1>Привет, мир!</h1>
-  </body>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Клубная арена</title>
+    <style>
+        /* Все стили без изменений (такие же, как в предыдущем коде) */
+        * { box-sizing: border-box; user-select: none; margin: 0; padding: 0; }
+        html, body { width: 100%; min-height: 100vh; background: #1a1a2e; display: flex; justify-content: center; align-items: center; font-family: 'Segoe UI', Tahoma, sans-serif; padding: 10px; margin: 0; overflow-x: hidden; }
+        .game-container { background: #16213e; padding: 20px 15px 15px; border-radius: 24px; box-shadow: 0 0 50px rgba(0,0,0,0.8); border: 2px solid #e94560; max-width: 600px; width: 100%; text-align: center; }
+        h1 { color: #e94560; margin-bottom: 15px; font-size: clamp(20px, 6vw, 28px); letter-spacing: 2px; text-shadow: 0 0 10px rgba(233,69,96,0.5); }
+        .top-panel { display: flex; justify-content: space-between; align-items: center; padding: 0 0 12px 0; flex-wrap: wrap; gap: 8px; }
+        .keys-area { display: flex; align-items: center; gap: 8px; background: #0f3460; padding: 6px 14px; border-radius: 40px; border: 1px solid #e94560; }
+        .keys-area span { color: #eee; font-weight: bold; font-size: 16px; }
+        .key-dots { display: flex; gap: 4px; }
+        .key-dot { display: inline-block; width: 20px; height: 20px; border-radius: 50%; border: 2px solid #fff; transition: all 0.2s; }
+        .key-dot.red { background: #b22234; }
+        .key-dot.blue { background: #1e5b8c; }
+        .key-dot.yellow { background: #f5c842; }
+        .key-dot.found { opacity: 1; border-color: #f5c842; box-shadow: 0 0 12px #f5c842; }
+        .key-dot.hidden { opacity: 0.25; border-color: #666; }
+        .durability-area { background: #0f3460; padding: 6px 16px; border-radius: 40px; border: 1px solid #e94560; color: #eee; font-weight: bold; font-size: 16px; }
+        .durability-area span { color: #f5c842; font-size: 20px; }
+        .grid-wrapper { display: flex; justify-content: center; align-items: center; margin: 10px 0; perspective: 800px; width: 100%; }
+        .grid { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; width: 100%; max-width: 400px; aspect-ratio: 1 / 1; transform: rotate(45deg) scale(0.75); transition: transform 0.2s ease; }
+        .cell { background: #2d4059; border-radius: 14px; display: flex; align-items: center; justify-content: center; font-size: 28px; font-weight: bold; color: #fff; cursor: pointer; transition: all 0.15s; box-shadow: inset 0 0 0 2px #4a6a8a, 0 4px 0 #0f1a2b; aspect-ratio: 1 / 1; transform: rotate(-45deg); position: relative; touch-action: manipulation; }
+        .cell:not(.opened):hover::after { content: attr(data-hint); position: absolute; bottom: 110%; left: 50%; transform: translateX(-50%); background: rgba(0,0,0,0.8); color: #fff; padding: 4px 10px; border-radius: 8px; font-size: 12px; white-space: nowrap; pointer-events: none; z-index: 10; border: 1px solid #e94560; }
+        .cell:not(.opened):hover { transform: rotate(-45deg) scale(1.05); box-shadow: inset 0 0 0 3px #f5c842, 0 4px 0 #0f1a2b; }
+        .cell:active:not(.opened) { transform: rotate(-45deg) translateY(2px); box-shadow: inset 0 0 0 2px #4a6a8a; }
+        .cell.opened { cursor: default; transform: rotate(-45deg) translateY(2px); box-shadow: inset 0 0 0 2px #888; }
+        .cell.key-red { background: #b22234; }
+        .cell.key-blue { background: #1e5b8c; }
+        .cell.key-yellow { background: #f5c842; color: #1a1a2e; }
+        .cell.bomb-red { background: #5c1a1a; box-shadow: inset 0 0 0 6px #ff4d4d, 0 0 15px #ff4d4d, 0 4px 0 #0f1a2b; color: #ff4d4d; }
+        .cell.bomb-blue { background: #1a2a5c; box-shadow: inset 0 0 0 6px #4da6ff, 0 0 15px #4da6ff, 0 4px 0 #0f1a2b; color: #4da6ff; }
+        .cell.bomb-yellow { background: #5c4a1a; box-shadow: inset 0 0 0 6px #f5c842, 0 0 15px #f5c842, 0 4px 0 #0f1a2b; color: #f5c842; }
+        .cell.empty { background: #3a3a5a; }
+        .cell.hint-reveal { opacity: 0.85; border: 3px solid #f5c842; background: #4a4a6a; }
+        .action-modal { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: rgba(0,0,0,0.7); display: none; justify-content: center; align-items: center; z-index: 1000; backdrop-filter: blur(4px); }
+        .action-modal.active { display: flex; }
+        .action-modal-content { background: #16213e; padding: 25px 30px; border-radius: 24px; border: 2px solid #e94560; text-align: center; max-width: 340px; width: 90%; box-shadow: 0 0 60px rgba(233,69,96,0.3); }
+        .action-modal-content h2 { color: #eee; margin-bottom: 20px; font-size: 22px; }
+        .action-modal-content .btn-group { display: flex; flex-direction: column; gap: 12px; }
+        .action-modal-content .btn { background: #0f3460; color: #eee; border: 2px solid #e94560; padding: 14px; border-radius: 40px; font-weight: bold; font-size: 18px; cursor: pointer; transition: all 0.2s; touch-action: manipulation; }
+        .action-modal-content .btn:hover:not(:disabled) { background: #e94560; transform: scale(1.02); }
+        .action-modal-content .btn:disabled { opacity: 0.4; cursor: not-allowed; transform: none; }
+        .action-modal-content .btn-close { background: transparent; border: 1px solid #666; margin-top: 8px; color: #aaa; }
+        .action-modal-content .btn-close:hover { background: #333; color: #fff; }
+        .message { text-align: center; font-size: 18px; font-weight: bold; padding: 10px; margin-top: 12px; border-radius: 12px; background: #0f3460; min-height: 45px; display: flex; align-items: center; justify-content: center; color: #eee; word-wrap: break-word; }
+        .message.win { background: #1b5e20; color: #a5d6a7; border: 2px solid #66bb6a; }
+        .message.lose { background: #7f1d1d; color: #ef9a9a; border: 2px solid #e53935; }
+        .btn-restart { background: #e94560; color: #fff; border: none; padding: 12px 20px; border-radius: 40px; font-weight: bold; font-size: 16px; cursor: pointer; transition: all 0.2s; margin-top: 12px; width: 100%; box-shadow: 0 0 20px rgba(233,69,96,0.3); touch-action: manipulation; }
+        .btn-restart:hover { background: #c73652; transform: scale(1.02); }
+        @media (max-width: 500px) { .game-container { padding: 12px 10px; } .cell { font-size: 20px; } .grid { gap: 6px; max-width: 320px; } .top-panel { flex-direction: row; flex-wrap: wrap; justify-content: center; } .keys-area, .durability-area { font-size: 14px; padding: 4px 12px; } .key-dot { width: 16px; height: 16px; } .action-modal-content { padding: 20px; } .action-modal-content .btn { font-size: 16px; padding: 12px; } }
+        @media (max-width: 400px) { .cell { font-size: 16px; } .grid { gap: 4px; max-width: 260px; } h1 { font-size: 18px; } .message { font-size: 14px; } }
+    </style>
+</head>
+<body>
+    <div class="game-container">
+        <h1>🏆 КЛУБНАЯ АРЕНА</h1>
+        <div class="top-panel">
+            <div class="keys-area">
+                <span>🔑</span>
+                <div class="key-dots" id="keyDots"></div>
+            </div>
+            <div class="durability-area">
+                🛡️ <span id="durability">100</span>
+            </div>
+        </div>
+        <div class="grid-wrapper">
+            <div class="grid" id="gridContainer"></div>
+        </div>
+        <div class="message" id="message"></div>
+        <button class="btn-restart" id="restartBtn">🔄 Новая игра</button>
+    </div>
+    <div class="action-modal" id="actionModal">
+        <div class="action-modal-content">
+            <h2 id="modalTitle">📦 Сейф</h2>
+            <div class="btn-group">
+                <button class="btn" id="btnOpen">🔓 Открыть (5 ⚡)</button>
+                <button class="btn" id="btnHint">💡 Подсказка (6 ⚡)</button>
+                <button class="btn btn-close" id="btnCancel">Отмена</button>
+            </div>
+        </div>
+    </div>
+    <script>
+        (function() {
+            const GRID_SIZE = 4;
+            const KEYS_NEEDED = 5;
+            const BOMBS_COUNT = 5;
+            const EMPTY_COUNT = 6;
+            const MAX_DURABILITY = 100;
+            const DURABILITY_PER_OPEN = 5;
+            const DURABILITY_PER_BOMB = 20;
+            const DURABILITY_PER_HINT = 6;
+            const COLORS = ['red', 'blue', 'yellow'];
+            const COLOR_EMOJI = { red: '🔴', blue: '🔵', yellow: '🟡' };
+            const COLOR_NAME = {
+                red: { key: 'Красный', bomb: 'Красная' },
+                blue: { key: 'Синий', bomb: 'Синяя' },
+                yellow: { key: 'Жёлтый', bomb: 'Жёлтая' }
+            };
+            const KEY_TARGET = { red: 2, blue: 2, yellow: 1 };
+
+            let grid = [];
+            let foundKeys = { red: 0, blue: 0, yellow: 0 };
+            let totalKeysFound = 0;
+            let durability = MAX_DURABILITY;
+            let gameOver = false;
+            let selectedCell = null;
+
+            const gridEl = document.getElementById('gridContainer');
+            const durabilityEl = document.getElementById('durability');
+            const keyDotsEl = document.getElementById('keyDots');
+            const messageEl = document.getElementById('message');
+            const restartBtn = document.getElementById('restartBtn');
+            const modal = document.getElementById('actionModal');
+            const modalTitle = document.getElementById('modalTitle');
+            const btnOpen = document.getElementById('btnOpen');
+            const btnHint = document.getElementById('btnHint');
+            const btnCancel = document.getElementById('btnCancel');
+
+            function shuffleArray(arr) {
+                for (let i = arr.length - 1; i > 0; i--) {
+                    const j = Math.floor(Math.random() * (i + 1));
+                    [arr[i], arr[j]] = [arr[j], arr[i]];
+                }
+                return arr;
+            }
+
+            // ----- НОВАЯ ГАРАНТИРОВАННАЯ ГЕНЕРАЦИЯ -----
+            function initGame() {
+                // Сброс
+                grid = Array.from({ length: GRID_SIZE }, () =>
+                    Array.from({ length: GRID_SIZE }, () => ({
+                        type: 'empty',
+                        color: null,
+                        opened: false,
+                        hintRevealed: false
+                    }))
+                );
+                foundKeys = { red: 0, blue: 0, yellow: 0 };
+                totalKeysFound = 0;
+                durability = MAX_DURABILITY;
+                gameOver = false;
+                selectedCell = null;
+                modal.classList.remove('active');
+
+                // Создаём список всех предметов (10 штук)
+                let items = [];
+                const keyColors = ['red', 'red', 'blue', 'blue', 'yellow'];
+                for (let color of keyColors) {
+                    items.push({ type: 'key', color: color });
+                }
+                const bombColors = ['red', 'red', 'blue', 'blue', 'yellow'];
+                for (let color of bombColors) {
+                    items.push({ type: 'bomb', color: color });
+                }
+
+                // Функция проверки, можно ли поставить предмет в (row, col)
+                function canPlace(row, col, item) {
+                    if (grid[row][col].type !== 'empty') return false;
+                    const dirs = [
+                        [-1,-1],[-1,0],[-1,1],
+                        [0,-1],        [0,1],
+                        [1,-1], [1,0], [1,1]
+                    ];
+                    for (let [dr, dc] of dirs) {
+                        const nr = row + dr;
+                        const nc = col + dc;
+                        if (nr < 0 || nr >= GRID_SIZE || nc < 0 || nc >= GRID_SIZE) continue;
+                        const neighbor = grid[nr][nc];
+                        if (neighbor.type === 'key' || neighbor.type === 'bomb') {
+                            if (neighbor.color === item.color) return false;
+                        }
+                    }
+                    return true;
+                }
+
+                // Рекурсивный перебор с возвратом (гарантирует нахождение решения)
+                function solve(index) {
+                    if (index === items.length) return true;
+                    const item = items[index];
+
+                    // Получаем список свободных клеток
+                    let freeCells = [];
+                    for (let r = 0; r < GRID_SIZE; r++) {
+                        for (let c = 0; c < GRID_SIZE; c++) {
+                            if (grid[r][c].type === 'empty') {
+                                freeCells.push({ row: r, col: c });
+                            }
+                        }
+                    }
+
+                    // Для жёлтого ключа – приоритет центральных клеток (4 центра)
+                    if (item.color === 'yellow' && item.type === 'key') {
+                        // Центральные клетки: (1,1), (1,2), (2,1), (2,2)
+                        let center = [];
+                        let perimeter = [];
+                        for (let cell of freeCells) {
+                            const { row, col } = cell;
+                            if (row >= 1 && row <= 2 && col >= 1 && col <= 2) {
+                                center.push(cell);
+                            } else {
+                                perimeter.push(cell);
+                            }
+                        }
+                        // Перемешиваем обе группы
+                        shuffleArray(center);
+                        shuffleArray(perimeter);
+                        // Сначала пробуем центр, потом периметр
+                        let order = [...center, ...perimeter];
+                        for (let cell of order) {
+                            if (canPlace(cell.row, cell.col, item)) {
+                                grid[cell.row][cell.col] = {
+                                    type: item.type,
+                                    color: item.color,
+                                    opened: false,
+                                    hintRevealed: false
+                                };
+                                if (solve(index + 1)) return true;
+                                grid[cell.row][cell.col] = {
+                                    type: 'empty',
+                                    color: null,
+                                    opened: false,
+                                    hintRevealed: false
+                                };
+                            }
+                        }
+                        return false;
+                    }
+
+                    // Для остальных предметов – случайный порядок свободных клеток
+                    shuffleArray(freeCells);
+                    for (let cell of freeCells) {
+                        if (canPlace(cell.row, cell.col, item)) {
+                            grid[cell.row][cell.col] = {
+                                type: item.type,
+                                color: item.color,
+                                opened: false,
+                                hintRevealed: false
+                            };
+                            if (solve(index + 1)) return true;
+                            grid[cell.row][cell.col] = {
+                                type: 'empty',
+                                color: null,
+                                opened: false,
+                                hintRevealed: false
+                            };
+                        }
+                    }
+                    return false;
+                }
+
+                // Пытаемся найти решение с разными перемешиваниями
+                let attempts = 0;
+                let found = false;
+                while (attempts < 500 && !found) {
+                    // Перемешиваем предметы, но жёлтый ключ ставим не первым
+                    shuffleArray(items);
+                    let yellowIdx = items.findIndex(item => item.color === 'yellow' && item.type === 'key');
+                    if (yellowIdx < 3) {
+                        const [item] = items.splice(yellowIdx, 1);
+                        items.splice(5, 0, item);
+                    }
+                    // Очищаем сетку
+                    for (let r = 0; r < GRID_SIZE; r++) {
+                        for (let c = 0; c < GRID_SIZE; c++) {
+                            grid[r][c] = { type: 'empty', color: null, opened: false, hintRevealed: false };
+                        }
+                    }
+                    if (solve(0)) {
+                        found = true;
+                        break;
+                    }
+                    attempts++;
+                }
+
+                // Если не нашли – перезапускаем игру (аварийный случай)
+                if (!found) {
+                    initGame();
+                    return;
+                }
+
+                // Заполняем оставшиеся клетки как пустые
+                for (let r = 0; r < GRID_SIZE; r++) {
+                    for (let c = 0; c < GRID_SIZE; c++) {
+                        if (grid[r][c].type === 'empty') {
+                            grid[r][c] = { type: 'empty', color: null, opened: false, hintRevealed: false };
+                        }
+                    }
+                }
+
+                renderGrid();
+                updateInfo();
+                messageEl.textContent = '';
+                messageEl.className = 'message';
+            }
+
+            function renderGrid() {
+                gridEl.innerHTML = '';
+                for (let r = 0; r < GRID_SIZE; r++) {
+                    for (let c = 0; c < GRID_SIZE; c++) {
+                        const cell = grid[r][c];
+                        const div = document.createElement('div');
+                        div.className = 'cell';
+                        div.dataset.row = r;
+                        div.dataset.col = c;
+
+                        let hintText = '';
+                        if (!cell.opened) {
+                            if (cell.hintRevealed) {
+                                if (cell.type === 'key') hintText = `${COLOR_NAME[cell.color].key} ключ`;
+                                else if (cell.type === 'bomb') hintText = `${COLOR_NAME[cell.color].bomb} бомба`;
+                                else hintText = 'пусто';
+                            } else {
+                                hintText = '🔍 кликни';
+                            }
+                            div.setAttribute('data-hint', hintText);
+                        }
+
+                        if (cell.opened) {
+                            div.classList.add('opened');
+                            if (cell.type === 'key') {
+                                div.classList.add('key-' + cell.color);
+                                div.textContent = COLOR_EMOJI[cell.color] || '🔑';
+                            } else if (cell.type === 'bomb') {
+                                div.classList.add('bomb-' + cell.color);
+                                div.textContent = '💣';
+                            } else {
+                                div.classList.add('empty');
+                                div.textContent = '⬛';
+                            }
+                        } else if (cell.hintRevealed && !cell.opened) {
+                            div.classList.add('hint-reveal');
+                            if (cell.type === 'key') {
+                                div.textContent = COLOR_EMOJI[cell.color] || '🔑';
+                                div.style.background = '#4a4a6a';
+                            } else if (cell.type === 'bomb') {
+                                div.textContent = '💣';
+                                div.classList.add('bomb-' + cell.color);
+                            } else {
+                                div.textContent = '⬜';
+                                div.style.background = '#3a3a5a';
+                            }
+                        } else {
+                            div.textContent = '📦';
+                            div.style.background = '#2d4059';
+                        }
+                        div.addEventListener('click', () => onCellClick(r, c));
+                        gridEl.appendChild(div);
+                    }
+                }
+            }
+
+            function updateInfo() {
+                durabilityEl.textContent = Math.max(0, durability);
+                keyDotsEl.innerHTML = '';
+                const allKeys = ['red', 'red', 'blue', 'blue', 'yellow'];
+                const foundColors = [];
+                for (let color of ['red', 'blue', 'yellow']) {
+                    for (let i = 0; i < foundKeys[color]; i++) {
+                        foundColors.push(color);
+                    }
+                }
+                for (let i = 0; i < allKeys.length; i++) {
+                    const color = allKeys[i];
+                    const dot = document.createElement('span');
+                    dot.className = 'key-dot ' + color;
+                    const idx = foundColors.indexOf(color);
+                    if (idx !== -1) {
+                        dot.classList.add('found');
+                        foundColors.splice(idx, 1);
+                    } else {
+                        dot.classList.add('hidden');
+                    }
+                    keyDotsEl.appendChild(dot);
+                }
+            }
+
+            function onCellClick(row, col) {
+                if (gameOver) return;
+                const cell = grid[row][col];
+                if (cell.opened) return;
+
+                selectedCell = { row, col };
+                modalTitle.textContent = `📦 Сейф (${row+1}, ${col+1})`;
+                const canOpen = durability >= DURABILITY_PER_OPEN;
+                const canHint = durability >= DURABILITY_PER_HINT;
+                btnOpen.disabled = !canOpen;
+                btnOpen.textContent = canOpen ? `🔓 Открыть (${DURABILITY_PER_OPEN} ⚡)` : `🔓 Недостаточно энергии`;
+                btnHint.disabled = !canHint;
+                btnHint.textContent = canHint ? `💡 Подсказка (${DURABILITY_PER_HINT} ⚡)` : `💡 Недостаточно энергии`;
+                modal.classList.add('active');
+            }
+
+            function performAction(action) {
+                if (!selectedCell || gameOver) return;
+                const { row, col } = selectedCell;
+                const cell = grid[row][col];
+                if (cell.opened) {
+                    modal.classList.remove('active');
+                    return;
+                }
+
+                if (action === 'open') {
+                    if (durability < DURABILITY_PER_OPEN) {
+                        messageEl.textContent = '⚠️ Недостаточно энергии!';
+                        messageEl.className = 'message lose';
+                        modal.classList.remove('active');
+                        return;
+                    }
+                    cell.opened = true;
+                    durability -= DURABILITY_PER_OPEN;
+                    let msg = '';
+                    if (cell.type === 'key') {
+                        const color = cell.color;
+                        if (foundKeys[color] < KEY_TARGET[color]) {
+                            foundKeys[color]++;
+                            totalKeysFound++;
+                            msg = `🔑 Найден ${COLOR_NAME[color].key} ключ! (${foundKeys[color]}/${KEY_TARGET[color]})`;
+                        } else {
+                            msg = `🔑 ${COLOR_NAME[color].key} ключ уже найден в нужном количестве.`;
+                        }
+                        if (totalKeysFound === KEYS_NEEDED) {
+                            gameOver = true;
+                            messageEl.textContent = '🏆 Кубок похищен! ПОБЕДА! 🎉';
+                            messageEl.className = 'message win';
+                            renderGrid();
+                            updateInfo();
+                            modal.classList.remove('active');
+                            return;
+                        }
+                    } else if (cell.type === 'bomb') {
+                        durability -= DURABILITY_PER_BOMB;
+                        msg = `💣 ${COLOR_NAME[cell.color].bomb} бомба! -${DURABILITY_PER_BOMB} энергии.`;
+                    } else {
+                        msg = '⬛ Пустой сейф.';
+                    }
+                    renderGrid();
+                    updateInfo();
+                    messageEl.textContent = msg;
+                    messageEl.className = 'message';
+                    if (durability <= 0) {
+                        durability = 0;
+                        updateInfo();
+                        if (totalKeysFound < KEYS_NEEDED) {
+                            gameOver = true;
+                            messageEl.textContent = '💀 Энергия истощена. Игра окончена.';
+                            messageEl.className = 'message lose';
+                            renderGrid();
+                            modal.classList.remove('active');
+                            return;
+                        }
+                    }
+                    modal.classList.remove('active');
+                    if (durability <= 0 && totalKeysFound < KEYS_NEEDED) {
+                        gameOver = true;
+                        messageEl.textContent = '💀 Энергия истощена. Игра окончена.';
+                        messageEl.className = 'message lose';
+                        renderGrid();
+                    }
+                } else if (action === 'hint') {
+                    if (durability < DURABILITY_PER_HINT) {
+                        messageEl.textContent = '⚠️ Недостаточно энергии для подсказки!';
+                        messageEl.className = 'message lose';
+                        modal.classList.remove('active');
+                        return;
+                    }
+                    cell.hintRevealed = true;
+                    durability -= DURABILITY_PER_HINT;
+                    let hintMsg = `💡 В сейфе: `;
+                    if (cell.type === 'key') hintMsg += `${COLOR_NAME[cell.color].key} ключ`;
+                    else if (cell.type === 'bomb') hintMsg += `${COLOR_NAME[cell.color].bomb} бомба`;
+                    else hintMsg += `пусто`;
+                    messageEl.textContent = hintMsg;
+                    messageEl.className = 'message';
+                    renderGrid();
+                    updateInfo();
+                    modal.classList.remove('active');
+                    if (durability <= 0) {
+                        durability = 0;
+                        updateInfo();
+                        if (totalKeysFound < KEYS_NEEDED) {
+                            gameOver = true;
+                            messageEl.textContent = '💀 Энергия истощена. Игра окончена.';
+                            messageEl.className = 'message lose';
+                            renderGrid();
+                        }
+                    }
+                }
+                selectedCell = null;
+            }
+
+            btnOpen.addEventListener('click', () => performAction('open'));
+            btnHint.addEventListener('click', () => performAction('hint'));
+            btnCancel.addEventListener('click', () => {
+                modal.classList.remove('active');
+                selectedCell = null;
+            });
+            modal.addEventListener('click', (e) => {
+                if (e.target === modal) {
+                    modal.classList.remove('active');
+                    selectedCell = null;
+                }
+            });
+
+            restartBtn.addEventListener('click', initGame);
+            initGame();
+        })();
+    </script>
+</body>
 </html>
