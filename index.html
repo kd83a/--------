@@ -5,6 +5,7 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
     <title>Клубная арена</title>
     <style>
+        /* (стили без изменений, они такие же, как были) */
         * { box-sizing: border-box; user-select: none; margin: 0; padding: 0; }
         html, body { width: 100%; min-height: 100vh; background: #1a1a2e; display: flex; justify-content: center; align-items: center; font-family: 'Segoe UI', Tahoma, sans-serif; padding: 10px; margin: 0; overflow-x: hidden; }
         .game-container { background: #16213e; padding: 20px 15px 15px; border-radius: 24px; box-shadow: 0 0 50px rgba(0,0,0,0.8); border: 2px solid #e94560; max-width: 600px; width: 100%; text-align: center; }
@@ -64,7 +65,7 @@
                 <div class="key-dots" id="keyDots"></div>
             </div>
             <div class="durability-area">
-                🛡️ <span id="durability">100</span>
+                🛡️ <span id="durability">100</span> / 100
             </div>
         </div>
         <div class="grid-wrapper">
@@ -145,6 +146,15 @@
                 revealAllCells();
                 modal.classList.remove('active');
                 selectedCell = null;
+            }
+
+            // Новая функция: проверяет, можно ли продолжать игру
+            function checkEnergyAndLose() {
+                if (gameOver) return;
+                // Если энергия меньше 5 и ключи не все собраны – поражение
+                if (durability < DURABILITY_PER_OPEN && totalKeysFound < KEYS_NEEDED) {
+                    loseGame('💀 Недостаточно энергии для продолжения игры. Игра окончена.');
+                }
             }
 
             function initGame() {
@@ -442,13 +452,17 @@
                     updateInfo();
                     messageEl.textContent = msg;
                     messageEl.className = 'message';
-                    if (durability <= 0) {
-                        loseGame('💀 Энергия истощена. Игра окончена.');
-                        modal.classList.remove('active');
-                        return;
-                    }
+                    // Проверяем, не стала ли энергия меньше 5
+                    checkEnergyAndLose();
                     modal.classList.remove('active');
                 } else if (action === 'hint') {
+                    if (cell.hintRevealed) {
+                        messageEl.textContent = '⚠️ Подсказка уже использована на этом сейфе.';
+                        messageEl.className = 'message';
+                        modal.classList.remove('active');
+                        selectedCell = null;
+                        return;
+                    }
                     if (durability < DURABILITY_PER_HINT) {
                         loseGame('💀 Недостаточно энергии для подсказки. Игра окончена.');
                         modal.classList.remove('active');
@@ -464,11 +478,8 @@
                     messageEl.className = 'message';
                     renderGrid();
                     updateInfo();
-                    if (durability <= 0) {
-                        loseGame('💀 Энергия истощена. Игра окончена.');
-                        modal.classList.remove('active');
-                        return;
-                    }
+                    // Проверяем, не стала ли энергия меньше 5
+                    checkEnergyAndLose();
                     modal.classList.remove('active');
                 }
                 selectedCell = null;
