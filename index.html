@@ -83,8 +83,8 @@
         <div class="action-modal-content">
             <h2 id="modalTitle">📦 Сейф</h2>
             <div class="btn-group">
-                <button class="btn" id="btnOpen">🔓 Открыть (5 ⚡)</button>
-                <button class="btn" id="btnHint">💡 Подсказка (6 ⚡)</button>
+                <button class="btn" id="btnOpen">🔓 Открыть (5⚡)</button>
+                <button class="btn" id="btnHint">💡 Подсказка (6⚡)</button>
                 <button class="btn btn-close" id="btnCancel">Отмена</button>
             </div>
         </div>
@@ -403,9 +403,9 @@
                 const canOpen = durability >= DURABILITY_PER_OPEN;
                 const canHint = durability >= DURABILITY_PER_HINT;
                 btnOpen.disabled = !canOpen;
-                btnOpen.textContent = canOpen ? `🔓 Открыть (${DURABILITY_PER_OPEN} ⚡)` : '🔓 Недостаточно энергии';
+                btnOpen.textContent = canOpen ? `🔓 Открыть (${DURABILITY_PER_OPEN}⚡)` : '🔓 Недостаточно энергии';
                 btnHint.disabled = !canHint;
-                btnHint.textContent = canHint ? `💡 Подсказка (${DURABILITY_PER_HINT} ⚡)` : '💡 Недостаточно энергии';
+                btnHint.textContent = canHint ? `💡 Подсказка (${DURABILITY_PER_HINT}⚡)` : '💡 Недостаточно энергии';
                 modal.classList.add('active');
             }
 
